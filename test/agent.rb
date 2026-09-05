@@ -34,6 +34,13 @@ module Mrbmacs
       end
     end
 
+    class PaneApp < Application
+      def initialize(project = nil)
+        @ext = Extension.new
+        @project = project
+      end
+    end
+
     def self.with_project
       tmp_directory = ENV['TMPDIR'] || '/tmp'
       root = File.join(tmp_directory, "mrbmacs-agent-test-#{$$}-#{Time.now.to_i}")
@@ -89,7 +96,7 @@ assert('agent_tools exposes project search, file open, and file read tools') do
 
   tools = app.agent_tools
 
-  assert_equal 5, tools.length
+  assert_equal 6, tools.length
   assert_equal 'search_project', tools[0]['name']
   assert_equal ['query'], tools[0]['input_schema']['required']
   assert_equal({ 'type' => 'string' }, tools[0]['input_schema']['properties']['query'])
@@ -104,6 +111,41 @@ assert('agent_tools exposes project search, file open, and file read tools') do
   assert_equal ['path', 'start_line', 'end_line'], tools[3]['input_schema']['required']
   assert_equal 'find_files', tools[4]['name']
   assert_equal ['query'], tools[4]['input_schema']['required']
+  assert_equal 'list_commands', tools[5]['name']
+  assert_equal 'List available editor commands.', tools[5]['description']
+  assert_equal({}, tools[5]['input_schema']['properties'])
+  assert_equal([], tools[5]['input_schema']['required'])
+  assert_false tools[5]['input_schema']['additionalProperties']
+end
+
+assert('agent list_commands returns structured command information without editor UI') do
+  app = Mrbmacs::AgentTestSupport::App.new
+  app.instance_variable_set(:@command_list, ['find_file', 'list_commands'])
+
+  result = app.agent_call_tool('list_commands', {})
+
+  assert_equal 2, result['total_commands']
+  assert_equal(
+    [
+      { 'name' => 'find-file', 'description' => 'Open a file.', 'api' => false },
+      {
+        'name' => 'list-commands',
+        'description' => 'List available editor commands.',
+        'api' => true
+      }
+    ],
+    result['commands']
+  )
+  assert_nil app.opened_file
+end
+
+assert('agent list_commands rejects arguments') do
+  app = Mrbmacs::AgentTestSupport::App.new
+  app.instance_variable_set(:@command_list, ['list_commands'])
+
+  assert_raise(ArgumentError) do
+    app.agent_call_tool('list_commands', { 'unexpected' => true })
+  end
 end
 
 assert('agent_call_tool searches only the current project') do
@@ -202,7 +244,7 @@ assert('agent find_file opens in another pane and restores the original pane') d
       original_window,
       [original_window, file_window]
     )
-    app = Mrbmacs::AgentTestSupport::App.new(Mrbmacs::Project.new(root))
+    app = Mrbmacs::AgentTestSupport::PaneApp.new(Mrbmacs::Project.new(root))
     app.instance_variable_set(:@frame, frame)
     app.instance_variable_set(:@current_buffer, original_buffer)
     opened_window = nil

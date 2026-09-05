@@ -87,13 +87,24 @@ module Mrbmacs
 
   class Application
     def agent_tools
-      [
+      tools = [
         AgentExtension::SEARCH_PROJECT_TOOL,
         AgentExtension::FIND_FILE_TOOL,
         AgentExtension::READ_FILE_TOOL,
         AgentExtension::READ_FILE_RANGE_TOOL,
         AgentExtension::FIND_FILES_TOOL
       ]
+      Command.metadata.each do |name, metadata|
+        api = metadata['api']
+        next if api.nil?
+
+        tools << {
+          'name' => name.to_s,
+          'description' => metadata['description'],
+          'input_schema' => api['input_schema']
+        }
+      end
+      tools
     end
 
     def agent_call_tool(name, arguments)
@@ -120,7 +131,12 @@ module Mrbmacs
       when 'find_files'
         agent_find_files(arguments)
       else
-        raise ArgumentError, "Unknown agent tool: #{name}"
+        metadata = Command.metadata[name.to_sym]
+        api = metadata.nil? ? nil : metadata['api']
+        handler = api.nil? ? nil : api['handler']
+        raise ArgumentError, "Unknown agent tool: #{name}" if handler.nil?
+
+        send(handler, arguments)
       end
     end
 
