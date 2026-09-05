@@ -247,18 +247,17 @@ assert('agent find_file opens in another pane and restores the original pane') d
     app = Mrbmacs::AgentTestSupport::PaneApp.new(Mrbmacs::Project.new(root))
     app.instance_variable_set(:@frame, frame)
     app.instance_variable_set(:@current_buffer, original_buffer)
-    opened_window = nil
     app.define_singleton_method(:other_window) do
       @frame.switch_window(file_window)
       @current_buffer = file_window.buffer
     end
     app.define_singleton_method(:find_file) do |_path|
-      opened_window = @frame.edit_win
+      @opened_window = @frame.edit_win
     end
 
     app.send(:agent_open_file_in_other_pane, File.join(root, 'source.txt'))
 
-    assert_equal file_window, opened_window
+    assert_equal file_window, app.instance_variable_get(:@opened_window)
     assert_equal original_window, frame.edit_win
     assert_equal original_buffer, app.current_buffer
   end
