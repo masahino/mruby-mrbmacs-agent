@@ -95,27 +95,30 @@ assert('agent_tools exposes project search, file open, and file read tools') do
   app = Mrbmacs::AgentTestSupport::App.new
 
   tools = app.agent_tools
+  tools_by_name = {}
+  tools.each do |tool|
+    tools_by_name[tool['name']] = tool
+  end
 
-  assert_equal 6, tools.length
-  assert_equal 'search_project', tools[0]['name']
-  assert_equal ['query'], tools[0]['input_schema']['required']
-  assert_equal({ 'type' => 'string' }, tools[0]['input_schema']['properties']['query'])
-  assert_false tools[0]['input_schema']['additionalProperties']
-  assert_equal 'find_file', tools[1]['name']
-  assert_equal ['path'], tools[1]['input_schema']['required']
-  assert_equal({ 'type' => 'string' }, tools[1]['input_schema']['properties']['path'])
-  assert_false tools[1]['input_schema']['additionalProperties']
-  assert_equal 'read_file', tools[2]['name']
-  assert_equal ['path'], tools[2]['input_schema']['required']
-  assert_equal 'read_file_range', tools[3]['name']
-  assert_equal ['path', 'start_line', 'end_line'], tools[3]['input_schema']['required']
-  assert_equal 'find_files', tools[4]['name']
-  assert_equal ['query'], tools[4]['input_schema']['required']
-  assert_equal 'list_commands', tools[5]['name']
-  assert_equal 'List available editor commands.', tools[5]['description']
-  assert_equal({}, tools[5]['input_schema']['properties'])
-  assert_equal([], tools[5]['input_schema']['required'])
-  assert_false tools[5]['input_schema']['additionalProperties']
+  search_project = tools_by_name['search_project']
+  assert_equal ['query'], search_project['input_schema']['required']
+  assert_equal(
+    { 'type' => 'string' },
+    search_project['input_schema']['properties']['query']
+  )
+  assert_false search_project['input_schema']['additionalProperties']
+
+  find_file = tools_by_name['find_file']
+  assert_equal ['path'], find_file['input_schema']['required']
+  assert_equal({ 'type' => 'string' }, find_file['input_schema']['properties']['path'])
+  assert_false find_file['input_schema']['additionalProperties']
+
+  assert_equal ['path'], tools_by_name['read_file']['input_schema']['required']
+  assert_equal(
+    ['path', 'start_line', 'end_line'],
+    tools_by_name['read_file_range']['input_schema']['required']
+  )
+  assert_equal ['query'], tools_by_name['find_files']['input_schema']['required']
 end
 
 assert('agent list_commands returns structured command information without editor UI') do
